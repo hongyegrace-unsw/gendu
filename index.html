@@ -1,0 +1,597 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>我回来了 跟读</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- 汉字转拼音：pinyin-pro（需要联网加载；没网时只是不显示拼音） -->
+<script src="https://cdn.jsdelivr.net/npm/pinyin-pro@3.26.0/dist/index.js"></script>
+<style>
+/* 布局：左边是视频和"当前句"练习区，右边是句子列表；手机上上下排列 */
+:root{
+  --bg:#f2f4f1; --surface:#ffffff; --ink:#1c2420; --muted:#5d6a64; --line:#d8dfda;
+  --accent:#1f7a5c; --accent-ink:#ffffff; --accent-soft:#e0eee8; --py:#1f7a5c;
+  --rec:#c4372c; --rec-soft:#f7e2df;
+  --f-hz:"Noto Serif SC","Songti SC","SimSun",serif;
+  --f-ui:"IBM Plex Sans","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#111614; --surface:#19201d; --ink:#e6ece9; --muted:#9ba8a2; --line:#2b3531;
+  --accent:#4dc39b; --accent-ink:#0c1914; --accent-soft:#1c3128; --py:#72d4b0;
+  --rec:#ff6f61; --rec-soft:#3a1f1c; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#111614; --surface:#19201d; --ink:#e6ece9; --muted:#9ba8a2; --line:#2b3531;
+  --accent:#4dc39b; --accent-ink:#0c1914; --accent-soft:#1c3128; --py:#72d4b0;
+  --rec:#ff6f61; --rec-soft:#3a1f1c; color-scheme:dark;}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-ui);padding:16px;padding-block:16px 40px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+button,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+h1{font:700 22px/1.2 var(--f-hz);margin:0;letter-spacing:.02em}
+h1 small{font:500 13px var(--f-ui);color:var(--muted);margin-left:8px;letter-spacing:0}
+.tools{display:flex;flex-wrap:wrap;gap:8px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 12px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn[disabled]{opacity:.45;cursor:not-allowed;border-color:var(--line)}
+.btn.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.btn .en{color:var(--muted);font-size:12px}
+.btn.on .en{color:inherit}
+input[type=file]{display:none}
+
+.source{font-size:13px;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px 14px}
+.source b{color:var(--ink);font-weight:500}
+
+.grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:820px){.grid{grid-template-columns:minmax(0,1fr)}}
+
+.stage{display:flex;flex-direction:column;gap:12px;min-width:0}
+.vwrap{position:relative;border-radius:10px;overflow:hidden;background:#000}
+video{width:100%;max-width:100%;background:#000;display:block;max-height:52vh}
+.cover{position:absolute;left:0;right:0;top:79%;height:17%;pointer-events:none;background:rgba(10,14,12,.55);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);display:none}
+.cover-on .cover{display:block}
+.placeholder{border:1px dashed var(--line);border-radius:10px;padding:18px;color:var(--muted);font-size:14px;background:var(--surface)}
+.placeholder strong{color:var(--ink)}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:14px}
+.meta{display:flex;justify-content:space-between;gap:8px;font:500 12px var(--f-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.sent{font:500 clamp(24px,4.2vw,38px)/2.1 var(--f-hz);color:var(--ink);word-break:break-all}
+ruby{ruby-position:over}
+rt{font:400 .42em/1 var(--f-ui);color:var(--py);letter-spacing:.02em}
+.no-py rt{visibility:hidden}
+.no-hz .sent{color:transparent}
+.no-hz .sent ruby{border-bottom:2px dotted var(--line)}
+.tr{color:var(--muted);font-size:15px}
+.gap{font:inherit;line-height:inherit;border:0;border-bottom:3px solid var(--accent);background:var(--accent-soft);border-radius:4px 4px 0 0;padding:0 .1em;margin:0 .08em;cursor:pointer;color:transparent;vertical-align:baseline}
+.gap rt{color:transparent}
+.gap:hover{background:var(--accent)}
+.ans{color:var(--rec)}
+.ans rt{color:var(--rec)}
+.badge{display:inline-block;font:600 11px var(--f-ui);color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:0 5px;margin-left:6px;vertical-align:2px}
+.hint{font-size:13px;color:var(--muted)}
+.no-tr .tr{display:none}
+
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.play{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.play:hover{filter:brightness(1.07)}
+select.btn{padding-right:8px}
+.rec{background:var(--rec-soft);border-color:var(--rec);color:var(--rec);font-weight:600;min-width:150px;justify-content:center}
+.rec.live{background:var(--rec);color:#fff;animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 6px var(--rec-soft)}}
+@media (prefers-reduced-motion:reduce){.rec.live{animation:none}}
+.dot{width:9px;height:9px;border-radius:50%;background:currentColor;display:inline-block}
+.timer{font:500 13px var(--f-mono);color:var(--rec);font-variant-numeric:tabular-nums}
+
+.keys{font-size:12px;color:var(--muted)}
+.submit{border-top:1px dashed var(--line);padding-top:14px;display:flex;flex-direction:column;gap:8px}
+.submit h3{margin:0;font:600 14px var(--f-ui)}
+.submit input{font:inherit;border:1px solid var(--line);border-radius:8px;padding:7px 10px;background:var(--bg);color:var(--ink);min-width:0;width:12em}
+kbd{font:500 11px var(--f-mono);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 4px;background:var(--surface);color:var(--ink)}
+
+aside{min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+aside h2{font:600 13px var(--f-ui);margin:0;padding:12px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;color:var(--muted)}
+.list{max-height:70vh;overflow-y:auto}
+.item{display:grid;grid-template-columns:30px minmax(0,1fr) 12px;gap:8px;align-items:start;width:100%;text-align:left;padding:10px 14px;border:0;border-bottom:1px solid var(--line);background:transparent}
+.item:hover{background:var(--accent-soft)}
+.item.cur{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}
+.item .n{font:500 12px var(--f-mono);color:var(--muted);padding-top:3px;font-variant-numeric:tabular-nums}
+.item .t{font:500 16px/1.5 var(--f-hz);min-width:0}
+.item .s{display:block;font:400 12px var(--f-mono);color:var(--muted);margin-top:2px}
+.item .done{width:9px;height:9px;border-radius:50%;margin-top:8px}
+.item .done.y{background:var(--accent)}
+
+.note{font-size:13px;color:var(--muted);max-width:70ch}
+
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);padding:18px;width:min(560px,calc(100vw - 32px))}
+dialog::backdrop{background:rgba(0,0,0,.4)}
+dialog h3{margin:0 0 6px;font:600 16px var(--f-ui)}
+textarea{width:100%;min-height:200px;font:16px/1.6 var(--f-hz);padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);resize:vertical}
+
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:14px;max-width:calc(100vw - 32px);box-shadow:0 6px 24px rgba(0,0,0,.2)}
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+
+  <header>
+    <h1>我回来了<small>跟读 + 填空 Shadowing &amp; fill-in</small></h1>
+    <div class="tools">
+      <label class="btn" for="fVideo">换视频 <span class="en">Change video</span></label>
+      <input type="file" id="fVideo" accept="video/*,audio/*">
+      <input type="file" id="fSubs" accept=".srt,.vtt,text/vtt,text/plain" hidden>
+      <button class="btn" id="bPaste" type="button" hidden>粘贴句子</button>
+    </div>
+  </header>
+
+  <div class="source" id="source"></div>
+
+  <div class="grid">
+    <section class="stage">
+      <div class="vwrap" id="vwrap" hidden><video id="video" controls playsinline></video><div class="cover" aria-hidden="true"></div></div>
+      <div class="placeholder" id="ph">
+        <strong style="font-size:17px;color:var(--ink)">第一步：选择视频《我回来了》</strong><br>
+        先把老师发的视频保存到手机或电脑，再点下面的按钮选择它。<br>
+        <span class="en">Step 1: save the video your teacher sent, then choose it here.</span>
+        <div style="margin-top:12px"><label class="btn play" for="fVideo" style="font-size:16px;padding:10px 18px">选择视频 <span class="en" style="color:inherit;opacity:.85">Choose video</span></label></div>
+      </div>
+
+      <div class="card" id="card">
+        <div class="meta"><span id="pos">—</span><span id="range"></span></div>
+        <div>
+          <div class="sent" id="sent" lang="zh-CN"></div>
+          <div class="tr" id="tr"></div>
+          <div class="hint" id="hint" hidden>先听原声，猜猜空格里是什么，再点空格看答案。<span class="en">Listen, guess, then tap the blank.</span></div>
+        </div>
+
+        <div class="row">
+          <button class="btn" id="bPrev" type="button" title="上一句 (←)">‹ 上一句</button>
+          <button class="btn play" id="bPlay" type="button" title="播放这句 (空格)">▶ 听原声 <span class="en" style="color:inherit;opacity:.8">Listen</span></button>
+          <button class="btn" id="bLoop" type="button" title="循环这句 (L)">↻ 循环 <span class="en">Loop</span></button>
+          <select class="btn" id="sRate" title="速度 Speed" aria-label="速度 Speed">
+            <option value="0.5">0.5×</option>
+            <option value="0.75">0.75×</option>
+            <option value="1" selected>1×</option>
+          </select>
+          <button class="btn" id="bNext" type="button" title="下一句 (→)">下一句 ›</button>
+        </div>
+
+        <div class="row">
+          <button class="btn rec" id="bRec" type="button" title="录音 (R)"><span class="dot"></span><span id="recLabel">跟读录音 Record</span></button>
+          <span class="timer" id="timer"></span>
+          <button class="btn" id="bMine" type="button" title="听我的 (M)" disabled>听我的 <span class="en">Me</span></button>
+          <button class="btn" id="bCmp" type="button" title="原声 + 我的 (C)" disabled>对比 <span class="en">Compare</span></button>
+        </div>
+
+        <div class="row">
+          <button class="btn on" id="tPy" type="button">拼音 <span class="en">Pinyin</span></button>
+          <button class="btn on" id="tHz" type="button">汉字 <span class="en">Characters</span></button>
+          <button class="btn on" id="tTr" type="button">翻译 <span class="en">English</span></button>
+          <button class="btn on" id="tCover" type="button" title="视频画面里自带字幕时，用这个遮住">遮住视频字幕 <span class="en">Hide burned-in subs</span></button>
+          <button class="btn on" id="tGap" type="button" title="把练习词挖空，点空格看答案">挖空 <span class="en">Blanks</span></button>
+        </div>
+
+        <div class="submit">
+          <h3>交作业 <span class="en" style="color:var(--muted);font-weight:400">Hand in your recordings</span></h3>
+          <div class="row">
+            <label for="stuName" class="hint">名字 Name</label>
+            <input id="stuName" type="text" autocomplete="name" placeholder="例如：Anna">
+            <button class="btn play" id="bSubmit" type="button" disabled>保存作业 <span class="en" style="color:inherit;opacity:.8">Save file</span></button>
+          </div>
+          <div class="hint" id="subHint">录好的句子会合成一个音频文件，每句先放原声，再放你的录音。保存后，把文件发给老师。<br><span class="en">Your recorded sentences are saved as one audio file (original, then you). Send that file to your teacher.</span></div>
+        </div>
+
+        <div class="keys">快捷键：<kbd>空格</kbd> 听原声 · <kbd>R</kbd> 录音/停止 · <kbd>M</kbd> 听我的 · <kbd>C</kbd> 对比 · <kbd>L</kbd> 循环 · <kbd>←</kbd><kbd>→</kbd> 换句</div>
+      </div>
+
+      <p class="note">录音只保存在这个浏览器页面里，不会上传到任何地方；关掉或刷新页面就没了。<br>Recordings stay on this device only and disappear when you close the page.</p>
+    </section>
+
+    <aside>
+      <h2><span>句子 Sentences</span><span id="count"></span></h2>
+      <div class="list" id="list"></div>
+    </aside>
+  </div>
+</div>
+
+<dialog id="dlg">
+  <h3>粘贴句子</h3>
+  <p class="note" style="margin:0 0 10px">每行一句。想加英文翻译，用竖线隔开：<code>你好 | Hello</code>。没有视频时用电脑朗读。</p>
+  <textarea id="ta" lang="zh-CN"></textarea>
+  <div class="row" style="justify-content:flex-end;margin-top:12px">
+    <button class="btn" id="dCancel" type="button">取消</button>
+    <button class="btn play" id="dOk" type="button">使用这些句子</button>
+  </div>
+</dialog>
+
+<script type="application/json" id="preCues">[{"start": 2.65, "end": 3.7, "zh": "我[回来]了。", "en": "I'm home.", "ex": true}, {"start": 3.7, "end": 4.6, "zh": "[回来]了。", "en": "You're back.", "ex": true}, {"start": 8.2, "end": 8.95, "zh": "塞车吧？", "en": "Traffic jam, right?", "ex": true}, {"start": 8.95, "end": 10.76, "zh": "孩子呢？[回来]了？", "en": "Where are the kids? Are they back?", "ex": true}, {"start": 10.76, "end": 12.04, "zh": "[回来]了。方一凡写作业呢。", "en": "Yes. Fang Yifan is doing her homework.", "ex": true}, {"start": 12.04, "end": 13.0, "zh": "磊磊还没[回来]呢。", "en": "Leilei isn't back yet.", "ex": true}, {"start": 13.05, "end": 13.88, "zh": "去给那个谁……", "en": "He went to help, um...", "ex": false}, {"start": 13.88, "end": 15.0, "zh": "那个王一笛去补补功课去。", "en": "...Wang Yidi catch up on her schoolwork.", "ex": false}]</script>
+<script>
+(function(){
+const $ = s => document.querySelector(s);
+const app = $('#app'), v = $('#video');
+
+const DEMO = [
+  {zh:'你好，请问这里有人坐吗？', en:'Hi, is anyone sitting here?'},
+  {zh:'没有，你坐吧。', en:'No, go ahead and sit.'},
+  {zh:'服务员，我要一碗牛肉面。', en:"Waiter, I'd like a bowl of beef noodles."},
+  {zh:'要辣的还是不辣的？', en:'Spicy or not spicy?'},
+  {zh:'少放一点儿辣，谢谢。', en:'Just a little spicy, thanks.'},
+  {zh:'好的，请稍等一下。', en:'OK, please wait a moment.'}
+];
+
+const S = {
+  cues: DEMO.map(c => ({...c, start:null, end:null})),
+  i: 0, loop: false, rate: 1, recs: {},
+  videoName: '', subsName: '', sourceKind: 'demo', hasVideo: false
+};
+
+/* ---------- 工具 ---------- */
+const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt = t => { if (t == null) return ''; const m = Math.floor(t/60), s = (t%60); return m + ':' + s.toFixed(1).padStart(4,'0'); };
+let toastTimer;
+function toast(msg){
+  let el = document.querySelector('.toast');
+  if (!el){ el = document.createElement('div'); el.className = 'toast'; el.setAttribute('role','status'); document.body.appendChild(el); }
+  el.textContent = msg; el.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.hidden = true, 3500);
+}
+function rubyPlain(text){
+  try{
+    const items = window.pinyinPro.pinyin(text, {type:'all'});
+    return items.map(o => o.isZh
+      ? '<ruby>' + esc(o.origin) + '<rt>' + esc(o.pinyin) + '</rt></ruby>'
+      : '<span>' + esc(o.origin) + '</span>').join('');
+  }catch(e){ return esc(text); }
+}
+const clean = t => t.replace(/[\[\]]/g, '');
+let gapMode = true; const revealed = new Set();
+/* [词] 是练习要填的词：挖空模式下显示成空格，点一下显示答案 */
+function rubyHTML(text, idx){
+  return text.split(/(\[[^\]]+\])/).filter(Boolean).map((part, j) => {
+    if (!part.startsWith('[')) return rubyPlain(part);
+    const w = part.slice(1, -1), key = idx + ':' + j;
+    if (gapMode && !revealed.has(key)) return '<button type="button" class="gap" data-key="' + key + '" aria-label="空格，点击看答案">' + rubyPlain(w) + '</button>';
+    return '<span class="ans">' + rubyPlain(w) + '</span>';
+  }).join('');
+}
+
+/* ---------- 字幕解析（SRT / VTT，支持中英双语字幕） ---------- */
+function parseSubs(text){
+  text = text.replace(/^﻿/, '').replace(/\r/g, '');
+  const re = /(?:(\d{1,2}):)?(\d{1,2}):(\d{2})[,.](\d{1,3})\s*-->\s*(?:(\d{1,2}):)?(\d{1,2}):(\d{2})[,.](\d{1,3})/;
+  const sec = (h,m,s,ms) => (+h||0)*3600 + (+m)*60 + (+s) + (+ms.padEnd(3,'0'))/1000;
+  const out = [];
+  for (const block of text.split(/\n\s*\n/)){
+    const lines = block.split('\n');
+    const k = lines.findIndex(l => re.test(l));
+    if (k < 0) continue;
+    const m = lines[k].match(re);
+    const txt = lines.slice(k+1)
+      .map(l => l.replace(/<[^>]+>/g,'').replace(/\{[^}]*\}/g,'').trim())
+      .filter(Boolean);
+    if (!txt.length) continue;
+    const isZh = l => /[㐀-鿿]/.test(l);
+    const zh = txt.filter(isZh), other = txt.filter(l => !isZh(l));
+    out.push({
+      start: sec(m[1],m[2],m[3],m[4]), end: sec(m[5],m[6],m[7],m[8]),
+      zh: (zh.length ? zh : txt).join(' '), en: zh.length ? other.join(' ') : ''
+    });
+  }
+  return out;
+}
+
+/* ---------- 播放原声 ---------- */
+let segEnd = null, segCb = null, raf = 0, loopTimer = 0, mineAudio = null;
+const timed = () => S.hasVideo && S.cues[S.i] && S.cues[S.i].start != null;
+
+function stopAll(){
+  clearTimeout(loopTimer); cancelAnimationFrame(raf);
+  segEnd = null; segCb = null;
+  if (!v.paused) v.pause();
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+  if (mineAudio){ mineAudio.pause(); mineAudio = null; }
+}
+
+function playOriginal(cb){
+  stopAll();
+  const c = S.cues[S.i]; if (!c) return;
+  if (timed()){
+    v.playbackRate = S.rate;
+    v.currentTime = c.start;
+    segEnd = c.end; segCb = cb || null;
+    v.play().catch(() => toast('视频无法播放，请检查文件格式。'));
+    const tick = () => {
+      if (segEnd == null) return;
+      if (v.currentTime >= segEnd){
+        v.pause(); segEnd = null;
+        const f = segCb; segCb = null;
+        if (f) f(); else if (S.loop) loopTimer = setTimeout(() => playOriginal(), 1200);
+        return;
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+  } else {
+    speak(clean(c.zh), cb);
+  }
+}
+
+function pickVoice(){
+  const vs = speechSynthesis.getVoices();
+  return vs.find(x => /zh[-_]CN/i.test(x.lang)) || vs.find(x => /^zh/i.test(x.lang)) || null;
+}
+function speak(text, cb){
+  if (!('speechSynthesis' in window)){ toast('这个浏览器不支持朗读，请用 Chrome 或 Edge。'); return; }
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'zh-CN'; u.rate = Math.max(0.4, S.rate * 0.9);
+  const vo = pickVoice(); if (vo) u.voice = vo;
+  u.onend = () => { if (cb) cb(); else if (S.loop) loopTimer = setTimeout(() => playOriginal(), 1200); };
+  speechSynthesis.speak(u);
+}
+if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = () => {};
+
+/* 自由播放视频时，句子跟着视频走 */
+v.addEventListener('timeupdate', () => {
+  if (segEnd != null || !S.hasVideo) return;
+  const t = v.currentTime;
+  const k = S.cues.findIndex(c => c.start != null && t >= c.start && t < c.end);
+  if (k >= 0 && k !== S.i){ S.i = k; render(); }
+});
+
+/* ---------- 录音 ---------- */
+let stream = null, rec = null, chunks = [], recStart = 0, recTick = 0, recIdx = 0;
+async function toggleRec(){
+  if (rec && rec.state === 'recording'){ rec.stop(); return; }
+  stopAll();
+  if (!navigator.mediaDevices || !window.MediaRecorder){ toast('这个浏览器不能录音，请用 Chrome 或 Edge。'); return; }
+  try{ stream = stream || await navigator.mediaDevices.getUserMedia({audio:true}); }
+  catch(e){ toast('没有麦克风权限：请在浏览器地址栏旁边允许使用麦克风。'); return; }
+  const mime = ['audio/webm;codecs=opus','audio/webm','audio/mp4'].find(t => MediaRecorder.isTypeSupported(t));
+  rec = new MediaRecorder(stream, mime ? {mimeType: mime} : undefined);
+  chunks = []; recIdx = S.i;
+  rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+  rec.onstop = () => {
+    clearInterval(recTick);
+    const blob = new Blob(chunks, {type: rec.mimeType || 'audio/webm'});
+    if (S.recs[recIdx]) URL.revokeObjectURL(S.recs[recIdx]);
+    S.recs[recIdx] = URL.createObjectURL(blob);
+    rec = null; render();
+  };
+  rec.start(); recStart = Date.now();
+  recTick = setInterval(() => {
+    const s = (Date.now() - recStart) / 1000;
+    $('#timer').textContent = s.toFixed(1) + 's';
+    if (s >= 30 && rec) rec.stop();
+  }, 100);
+  render();
+}
+function playMine(){
+  const url = S.recs[S.i]; if (!url) return;
+  if (mineAudio){ mineAudio.pause(); }
+  mineAudio = new Audio(url);
+  mineAudio.play().catch(() => toast('录音无法播放。'));
+}
+function compare(){
+  if (!S.recs[S.i]) return;
+  const keep = S.loop; S.loop = false;
+  playOriginal(() => { S.loop = keep; setTimeout(playMine, 400); });
+}
+
+/* ---------- 交作业：把录音合成一个 WAV 文件 ---------- */
+const SR = 16000; let origAudio = null;
+function toMono16k(ab, from, to){
+  const a = Math.max(0, Math.floor((from ?? 0) * ab.sampleRate)), b = Math.min(ab.length, Math.ceil((to ?? ab.duration) * ab.sampleRate));
+  const n = Math.max(0, Math.floor((b - a) * SR / ab.sampleRate)), out = new Float32Array(n), chs = [];
+  for (let c = 0; c < ab.numberOfChannels; c++) chs.push(ab.getChannelData(c));
+  for (let i = 0; i < n; i++){
+    const x = a + i * ab.sampleRate / SR, i0 = Math.floor(x), f = x - i0; let v = 0;
+    for (const d of chs) v += (d[i0] || 0) * (1 - f) + (d[i0 + 1] || 0) * f;
+    out[i] = v / chs.length;
+  }
+  return out;
+}
+function tone(sec, hz){ const n = Math.floor(SR * sec), o = new Float32Array(n); for (let i = 0; i < n; i++){ const e = Math.min(1, i / 400, (n - i) / 400); o[i] = 0.22 * e * Math.sin(2 * Math.PI * hz * i / SR); } return o; }
+const quiet = sec => new Float32Array(Math.floor(SR * sec));
+function wavBlob(parts){
+  const len = parts.reduce((s, p) => s + p.length, 0), buf = new ArrayBuffer(44 + len * 2), d = new DataView(buf);
+  const str = (o, t) => { for (let i = 0; i < t.length; i++) d.setUint8(o + i, t.charCodeAt(i)); };
+  str(0, 'RIFF'); d.setUint32(4, 36 + len * 2, true); str(8, 'WAVE'); str(12, 'fmt '); d.setUint32(16, 16, true);
+  d.setUint16(20, 1, true); d.setUint16(22, 1, true); d.setUint32(24, SR, true); d.setUint32(28, SR * 2, true);
+  d.setUint16(32, 2, true); d.setUint16(34, 16, true); str(36, 'data'); d.setUint32(40, len * 2, true);
+  let o = 44; for (const p of parts) for (let i = 0; i < p.length; i++, o += 2) d.setInt16(o, Math.max(-1, Math.min(1, p[i])) * 0x7fff, true);
+  return new Blob([buf], {type:'audio/wav'});
+}
+async function submitWork(){
+  const idx = Object.keys(S.recs).map(Number).sort((a, b) => a - b);
+  if (!idx.length){ toast('还没有录音。先录几句再保存。'); return; }
+  const name = $('#stuName').value.trim().replace(/[\\/:*?"<>|]/g, '');
+  if (!name){ toast('请先写你的名字。'); $('#stuName').focus(); return; }
+  stopAll();
+  const btn = $('#bSubmit'); btn.disabled = true; $('#subHint').textContent = '正在合成，请稍等…';
+  try{
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    if (!origAudio && S.videoFile){ try{ origAudio = await ac.decodeAudioData(await S.videoFile.arrayBuffer()); }catch(e){ origAudio = false; } }
+    const parts = [];
+    for (const k of idx){
+      const c = S.cues[k];
+      parts.push(tone(0.18, 880), quiet(0.3));
+      if (origAudio && c.start != null){ parts.push(toMono16k(origAudio, c.start, c.end), quiet(0.6)); }
+      const mine = await ac.decodeAudioData(await (await fetch(S.recs[k])).arrayBuffer());
+      parts.push(toMono16k(mine), quiet(0.8));
+    }
+    ac.close && ac.close();
+    const title = (document.title || '跟读').replace(/\s*跟读.*$/, '') || '跟读';
+    const d = new Date(), date = d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+    let slug = 'gendu';
+    try{ slug = window.pinyinPro.pinyin(title, {toneType:'none', type:'array'}).join('').replace(/[^a-z0-9]/gi, '') || slug; }catch(e){}
+    const fname = name + '_' + slug + '_' + date + '.wav';
+    const url = URL.createObjectURL(wavBlob(parts));
+    const a = document.createElement('a'); a.href = url; a.download = fname; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    $('#subHint').innerHTML = '已保存：<b>' + esc(fname) + '</b>（第 ' + idx.map(k => k + 1).join('、') + ' 句）。请到「下载」文件夹找到这个文件，发给老师。<br><span class="en">Saved to your Downloads folder. Send this file to your teacher.</span>';
+  }catch(e){
+    $('#subHint').textContent = '保存失败：' + (e && e.message ? e.message : e) + '。请换 Chrome 或 Edge 再试。';
+  }finally{ render(); }
+}
+$('#bSubmit').addEventListener('click', submitWork);
+
+/* ---------- 换句 ---------- */
+function go(k){
+  if (rec && rec.state === 'recording') rec.stop();
+  stopAll();
+  S.i = Math.max(0, Math.min(S.cues.length - 1, k));
+  if (timed()) v.currentTime = S.cues[S.i].start;
+  render();
+  const el = document.querySelector('.item.cur');
+  if (el) el.scrollIntoView({block:'nearest'});
+}
+
+/* ---------- 画面 ---------- */
+function render(){
+  const c = S.cues[S.i];
+  $('#pos').textContent = S.cues.length ? ('第 ' + (S.i+1) + ' / ' + S.cues.length + ' 句') : '没有句子';
+  $('#range').textContent = c && c.start != null ? fmt(c.start) + ' – ' + fmt(c.end) : (timed() ? '' : '电脑朗读 TTS');
+  $('#sent').innerHTML = c ? rubyHTML(c.zh, S.i) : '';
+  $('#hint').hidden = !(gapMode && c && /\[/.test(c.zh));
+  $('#tr').textContent = c ? c.en : '';
+
+  const recording = !!(rec && rec.state === 'recording');
+  const has = !!S.recs[S.i];
+  $('#bRec').classList.toggle('live', recording);
+  $('#recLabel').textContent = recording ? '停止 Stop' : (has ? '重新录 Re-record' : '跟读录音 Record');
+  if (!recording) $('#timer').textContent = '';
+  $('#bMine').disabled = !has || recording;
+  $('#bCmp').disabled = !has || recording;
+  $('#bLoop').classList.toggle('on', S.loop);
+  $('#bPrev').disabled = S.i <= 0;
+  $('#bNext').disabled = S.i >= S.cues.length - 1;
+
+  $('#bSubmit').disabled = !Object.keys(S.recs).length || recording;
+  $('#count').textContent = S.cues.length + ' 句 · 已录 ' + Object.keys(S.recs).length;
+  $('#list').innerHTML = S.cues.map((q, k) =>
+    '<button type="button" class="item' + (k === S.i ? ' cur' : '') + '" data-k="' + k + '">' +
+      '<span class="n">' + (k+1) + '</span>' +
+      '<span class="t" lang="zh-CN">' + esc(gapMode ? q.zh.replace(/\[[^\]]+\]/g, '＿＿') : clean(q.zh)) + (q.ex ? '<span class="badge">练习</span>' : '') +
+        (q.start != null ? '<span class="s">' + fmt(q.start) + '</span>' : '') + '</span>' +
+      '<span class="done' + (S.recs[k] ? ' y' : '') + '" title="' + (S.recs[k] ? '已录音' : '') + '"></span>' +
+    '</button>').join('');
+
+  const src = [];
+  if (S.sourceKind === 'demo') src.push('<span>来源：<b>示例对话</b>（电脑朗读）</span>');
+  if (S.videoName) src.push('<span>视频：<b>' + esc(S.videoName) + '</b></span>');
+  if (S.subsName) src.push('<span>字幕：<b>' + esc(S.subsName) + '</b></span>');
+  if (S.sourceKind === 'paste') src.push('<span>来源：<b>粘贴的句子</b></span>');
+  if (S.subsName && !S.hasVideo) src.push('<span>还没选择视频</span>');
+  if (S.hasVideo && !S.subsName) src.push('<span>请再打开这个视频的字幕文件</span>');
+  $('#source').innerHTML = src.join('');
+  $('#vwrap').hidden = !S.hasVideo;
+  $('#ph').hidden = S.hasVideo;
+}
+
+/* ---------- 打开文件 ---------- */
+function clearRecs(){ Object.values(S.recs).forEach(u => URL.revokeObjectURL(u)); S.recs = {}; }
+function loadVideo(file){
+  stopAll();
+  if (v.src) URL.revokeObjectURL(v.src);
+  v.src = URL.createObjectURL(file);
+  S.hasVideo = true; S.videoName = file.name; S.videoFile = file; origAudio = null;
+  render();
+}
+function loadSubs(file){
+  const r = new FileReader();
+  r.onload = () => {
+    const cues = parseSubs(String(r.result));
+    if (!cues.length){ toast('没读到字幕。请确认是 .srt 或 .vtt 文件，编码为 UTF-8。'); return; }
+    stopAll(); clearRecs();
+    S.cues = cues; S.i = 0; S.subsName = file.name; S.sourceKind = 'subs';
+    render();
+    toast('读到 ' + cues.length + ' 句字幕');
+  };
+  r.readAsText(file, 'utf-8');
+}
+function handleFiles(files){
+  for (const f of files){
+    if (/\.(srt|vtt)$/i.test(f.name)) loadSubs(f);
+    else if (/^(video|audio)\//.test(f.type) || /\.(mp4|webm|mov|m4v|mkv|mp3|m4a)$/i.test(f.name)) loadVideo(f);
+    else toast('不认识这个文件：' + f.name);
+  }
+}
+$('#fVideo').addEventListener('change', e => { if (e.target.files[0]) loadVideo(e.target.files[0]); e.target.value = ''; });
+$('#fSubs').addEventListener('change', e => { if (e.target.files[0]) loadSubs(e.target.files[0]); e.target.value = ''; });
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => { e.preventDefault(); handleFiles(e.dataTransfer.files); });
+
+/* 粘贴句子 */
+const dlg = $('#dlg');
+$('#bPaste').addEventListener('click', () => {
+  $('#ta').value = S.sourceKind === 'paste' ? S.cues.map(c => c.zh + (c.en ? ' | ' + c.en : '')).join('\n') : '';
+  dlg.showModal(); $('#ta').focus();
+});
+$('#dCancel').addEventListener('click', () => dlg.close());
+$('#dOk').addEventListener('click', () => {
+  const cues = $('#ta').value.split('\n').map(l => l.trim()).filter(Boolean).map(l => {
+    const [zh, ...en] = l.split('|');
+    return {zh: zh.trim(), en: en.join('|').trim(), start: null, end: null};
+  });
+  if (!cues.length){ toast('请至少输入一句。'); return; }
+  stopAll(); clearRecs();
+  S.cues = cues; S.i = 0; S.sourceKind = 'paste'; S.subsName = '';
+  dlg.close(); render();
+});
+
+/* ---------- 按钮和快捷键 ---------- */
+$('#bPlay').addEventListener('click', () => playOriginal());
+$('#sent').addEventListener('click', e => { const g = e.target.closest('.gap'); if (g){ revealed.add(g.dataset.key); render(); } });
+$('#tGap').addEventListener('click', () => { gapMode = $('#tGap').classList.toggle('on'); revealed.clear(); render(); });
+$('#bPrev').addEventListener('click', () => go(S.i - 1));
+$('#bNext').addEventListener('click', () => go(S.i + 1));
+$('#bLoop').addEventListener('click', () => { S.loop = !S.loop; if (!S.loop) clearTimeout(loopTimer); render(); });
+$('#sRate').addEventListener('change', e => { S.rate = +e.target.value; if (!v.paused) v.playbackRate = S.rate; });
+$('#bRec').addEventListener('click', toggleRec);
+$('#bMine').addEventListener('click', () => { stopAll(); playMine(); });
+$('#bCmp').addEventListener('click', compare);
+$('#list').addEventListener('click', e => { const b = e.target.closest('.item'); if (b) go(+b.dataset.k); });
+function toggle(btn, cls){
+  btn.addEventListener('click', () => { const on = btn.classList.toggle('on'); app.classList.toggle(cls, !on); });
+}
+toggle($('#tPy'), 'no-py');
+$('#tCover').addEventListener('click', () => { const on = $('#tCover').classList.toggle('on'); app.classList.toggle('cover-on', on); });
+app.classList.add('cover-on'); toggle($('#tHz'), 'no-hz'); toggle($('#tTr'), 'no-tr');
+
+document.addEventListener('keydown', e => {
+  if (dlg.open || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.ctrlKey || e.metaKey || e.altKey) return;
+  const k = e.key.toLowerCase();
+  if (k === ' '){ e.preventDefault(); playOriginal(); }
+  else if (k === 'r'){ toggleRec(); }
+  else if (k === 'm'){ stopAll(); playMine(); }
+  else if (k === 'c'){ compare(); }
+  else if (k === 'l'){ $('#bLoop').click(); }
+  else if (k === 'arrowleft'){ e.preventDefault(); go(S.i - 1); }
+  else if (k === 'arrowright'){ e.preventDefault(); go(S.i + 1); }
+});
+
+/* 台词已内置；视频由学生自己选择（视频不放在网上） */
+(function(){
+  S.cues = JSON.parse(document.getElementById('preCues').textContent);
+  S.i = 0; S.subsName = '台词（已内置）'; S.sourceKind = 'subs';
+  v.addEventListener('loadedmetadata', () => {
+    if (isFinite(v.duration) && Math.abs(v.duration - 15) > 3) toast('这个视频的长度对不上，请确认选的是《我回来了》。');
+  });
+})();
+
+render();
+if (!window.pinyinPro) toast('拼音库没加载（可能没联网），先不显示拼音。');
+})();
+</script>
+</body>
+</html>
