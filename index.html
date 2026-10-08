@@ -584,6 +584,12 @@ document.addEventListener('keydown', e => {
 (function(){
   S.cues = JSON.parse(document.getElementById('preCues').textContent);
   S.i = 0; S.subsName = '台词（已内置）'; S.sourceKind = 'subs';
+  /* 自动加载同一个文件夹里的 video.mp4；加载不到时，学生可以自己选视频 */
+  const ph = document.getElementById('ph'), phHTML = ph.innerHTML;
+  ph.innerHTML = '<strong style="font-size:17px;color:var(--ink)">正在加载视频…</strong><br><span class="en">Loading the video…</span>';
+  fetch('video.mp4').then(r => { if (!r.ok) throw new Error(r.status); return r.blob(); })
+    .then(b => loadVideo(new File([b], '我回来了.mp4', {type:'video/mp4'})))
+    .catch(() => { ph.innerHTML = phHTML; });
   v.addEventListener('loadedmetadata', () => {
     if (isFinite(v.duration) && Math.abs(v.duration - 15) > 3) toast('这个视频的长度对不上，请确认选的是《我回来了》。');
   });
